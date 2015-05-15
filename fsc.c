@@ -8,6 +8,7 @@
 #include <errno.h>
 
 void tokenize(char* input, char** tolkien);
+int readFile(char* filename, int lastVal);
 void flushBuffer(char** strArray);
 int start_shell();
 int execute(char** strArray, int* loop);
@@ -112,12 +113,43 @@ int execute(char** strArray, int* loop)
         else
             perror("getcwd() error");
 	}
+	else if(strcmp(command, ".") == 0)
+	{
+		if((NULL == strArray[2]) && (NULL != strArray[1])){
+			exitValue = readFile(strArray[1], exitValue);
+
+		}else{
+			printf("Invalid number of arguments.\n");
+
+		}
+	}
 	else
 	{
 		printf("%s: Command not found.\n", command);
 	}
 
 	return exitValue;
+}
+
+int readFile(char* filename, int lastVal){
+	FILE *file;
+	char* strArray[40];
+
+	if((file = fopen(filename, "r"))){
+		// Get command
+		// While commands remain:
+			// Parse command
+			// execute command
+			// get command
+		printf("file opened!\n");
+
+
+		fclose(file);
+	}else{
+		printf("No such file or directory.\n");
+	}
+
+	return lastVal;
 }
 
 // Converts user input into an array of string tokens to be parsed.
