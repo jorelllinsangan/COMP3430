@@ -6,6 +6,7 @@
 #include <readline/history.h>
 #include <assert.h>
 #include <errno.h>
+#include <wait.h>
 
 void tokenize(char* input, char** tolkien);
 int readFile(char* filename, int lastVal);
@@ -24,9 +25,6 @@ int start_shell()
     char* prompt = "COMP3430 Shell $ ";
     char* input;
     char* strArray[40];
-    //char* exitCommand;
-    //int i = 0;
-    // Value returned by last executed function.
     int lastVal = 0;
     int loop = 1;
     
@@ -37,11 +35,6 @@ int start_shell()
 
 		lastVal = execute(strArray, &loop);	
     }
-      
-    // while(strArray[i]){
-    //  printf("%s\n", strArray[i]);
-    //  i++;
-    // }
 
     return lastVal;
 }
@@ -53,9 +46,12 @@ int execute(char** strArray, int* loop)
 {
 	char* command = strArray[0];
 	char* directoryStr;
+	char* args[40];
 	int exitValue = 0;
 	char cwd[1024];
 	int index;
+	int pid;
+	int status;
 
 	if(strcmp(command, "cd") == 0)
 	{
@@ -79,7 +75,8 @@ int execute(char** strArray, int* loop)
 			exitValue = chdir(directoryStr);
 
 			if(exitValue == -1){
-				printf("%s: No such file or directory.\n", directoryStr);
+				// printf("%s: No such file or directory.\n", directoryStr);
+				perror("Error");
 			}
 		}
 
@@ -125,7 +122,28 @@ int execute(char** strArray, int* loop)
 	}
 	else
 	{
-		printf("%s: Command not found.\n", command);
+		pid = fork();
+	
+		if(pid >= 0){
+			printf("pid before wait: %d\n", pid);
+
+			index = 1;
+			while(NULL != strArray[index]){
+				args[index-1] = strArray[index];
+				index++;
+			}
+			args[index] = NULL;
+			printf("%s", command);
+			execv(command, args);
+			pid = wait(&status);
+			flushBuffer(args);
+			// stuff
+			printf("Pid after wait: %d\n", status);
+
+		}else if(pid < 0){
+			perror("Error");
+
+		}
 	}
 
 	return exitValue;
@@ -133,17 +151,18 @@ int execute(char** strArray, int* loop)
 
 int readFile(char* filename, int lastVal){
 	FILE *file;
-	char* strArray[40];
+	char input[200];
+	char* command[40];
+	int loop = 1;
 
 	if((file = fopen(filename, "r"))){
-		// Get command
-		// While commands remain:
-			// Parse command
-			// execute command
-			// get command
-		printf("file opened!\n");
-
-
+		  	  
+		while (fgets( input, sizeof(input), file) && loop){
+			printf("%s", input);
+		    
+		    tokenize(input, command);
+		    execute(command, &loop);
+		  }
 		fclose(file);
 	}else{
 		printf("No such file or directory.\n");
@@ -163,10 +182,21 @@ void tokenize(char* input, char** tokens){
 
 	while (token != NULL)
 	{	
+		// if(token[strlen(token)-1] == '\n'){
+		// 	tokens[strlen(token)-1] = '\0';
+		// }
+		
+		for (int i = 0; i < strlen(token); i++){
+			if(token[i] == '\n')
+			{	
+				token[i] = '\0';
+			}
+			
+		}
 		//printf("%s\n", token);
 		tokens[index] = malloc(strlen(token)+1);
 		strcpy(tokens[index], token);
-		token = strtok(NULL, " \t");
+		token = strtok(NULL, " \t\n");
 		index++;
 	}
 }
@@ -174,6 +204,8 @@ void tokenize(char* input, char** tokens){
 /* Initializes all values in the buffer to NULL before tokenizing
  * a command string.
  */
+
+
 void flushBuffer(char** strArray){
 	for(int i = 0; i < 40; i++){
 		strArray[i] = NULL;
