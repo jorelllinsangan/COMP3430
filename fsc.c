@@ -120,6 +120,7 @@ int execute(char** strArray, int* loop)
 
 			if(status < 0){
 				perror("Error");
+				exit(status);
 			}
 
 			exit(0);
