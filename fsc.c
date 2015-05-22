@@ -46,16 +46,13 @@ int execute(char** strArray, int* loop)
 {
 	char* command = strArray[0];
 	char* directoryStr;
-	char* args[40];
 	int exitValue = 0;
-	char cwd[1024];
-	int index;
+	int index = 0;
 	int pid;
-	int status;
+	int status = 0;
 
 	if(strcmp(command, "cd") == 0)
 	{
-		
 		if(NULL == strArray[1])
 		{
 			// If no parameter given, return to home directory.
@@ -75,7 +72,6 @@ int execute(char** strArray, int* loop)
 			exitValue = chdir(directoryStr);
 
 			if(exitValue == -1){
-				// printf("%s: No such file or directory.\n", directoryStr);
 				perror("Error");
 			}
 		}
@@ -103,15 +99,9 @@ int execute(char** strArray, int* loop)
 			*loop = 0;
 		}
 	}
-	else if(strcmp(command, "pwd") == 0)
-	{
-		if (getcwd(cwd, sizeof(cwd)) != NULL)
-            fprintf(stdout, "Current working dir: %s\n", cwd);
-        else
-            perror("getcwd() error");
-	}
 	else if(strcmp(command, ".") == 0)
 	{
+		// Check to see that only one parameter has been passed.
 		if((NULL == strArray[2]) && (NULL != strArray[1])){
 			exitValue = readFile(strArray[1], exitValue);
 
@@ -122,33 +112,29 @@ int execute(char** strArray, int* loop)
 	}
 	else
 	{
+		// Fork and have child process execute the command.
 		pid = fork();
-	
-		if(pid >= 0){
-			printf("pid before wait: %d\n", pid);
+		
+		if(pid == 0){ 
+			status = execvp(command, strArray);
 
-			index = 1;
-			while(NULL != strArray[index]){
-				args[index-1] = strArray[index];
-				index++;
+			if(status < 0){
+				perror("Error");
 			}
-			args[index] = NULL;
-			printf("%s", command);
-			execv(command, args);
-			pid = wait(&status);
-			flushBuffer(args);
-			// stuff
-			printf("Pid after wait: %d\n", status);
+
+			exit(0);
 
 		}else if(pid < 0){
 			perror("Error");
 
-		}
+		}		
 	}
 
+	pid = wait(&status);
 	return exitValue;
 }
 
+// Reads commands from a text file.
 int readFile(char* filename, int lastVal){
 	FILE *file;
 	char input[200];
@@ -158,12 +144,17 @@ int readFile(char* filename, int lastVal){
 	if((file = fopen(filename, "r"))){
 		  	  
 		while (fgets( input, sizeof(input), file) && loop){
-			printf("%s", input);
-		    
 		    tokenize(input, command);
-		    execute(command, &loop);
-		  }
+		    lastVal = execute(command, &loop);
+
+		}
+
 		fclose(file);
+
+		if(!loop){
+			exit(lastVal);
+		}
+
 	}else{
 		printf("No such file or directory.\n");
 	}
@@ -181,19 +172,14 @@ void tokenize(char* input, char** tokens){
 	flushBuffer(tokens);
 
 	while (token != NULL)
-	{	
-		// if(token[strlen(token)-1] == '\n'){
-		// 	tokens[strlen(token)-1] = '\0';
-		// }
-		
+	{			
 		for (int i = 0; i < strlen(token); i++){
 			if(token[i] == '\n')
 			{	
 				token[i] = '\0';
 			}
-			
 		}
-		//printf("%s\n", token);
+
 		tokens[index] = malloc(strlen(token)+1);
 		strcpy(tokens[index], token);
 		token = strtok(NULL, " \t\n");
@@ -201,11 +187,9 @@ void tokenize(char* input, char** tokens){
 	}
 }
 
-/* Initializes all values in the buffer to NULL before tokenizing
+/* Initializes all vaexlues in the buffer to NULL before tokenizing
  * a command string.
  */
-
-
 void flushBuffer(char** strArray){
 	for(int i = 0; i < 40; i++){
 		strArray[i] = NULL;
