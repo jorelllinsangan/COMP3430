@@ -31,9 +31,16 @@ int start_shell()
     while(loop)
     {
     	input = readline(prompt);
-    	tokenize(input, strArray);
 
-		lastVal = execute(strArray, &loop);	
+    	if(strlen(input) < 100){
+	    	tokenize(input, strArray);
+			lastVal = execute(strArray, &loop);	
+			
+		}else{
+			printf("Error: input too long.\n");
+
+		}
+
     }
 
     return lastVal;
